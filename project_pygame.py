@@ -3,7 +3,7 @@ import sys
 import os
 
 
-def load_image(name, colorkey=None):
+def load_image(name):
     fullname = os.path.join('data', name)
     # если файл не существует, то выходим
     if not os.path.isfile(fullname):
@@ -18,21 +18,26 @@ FPS = 60
 size = WIDTH, HEIGHT = 550, 500
 clock = pygame.time.Clock()
 tile_width = tile_height = 50
-STEP = 4
-tileset = load_image('morning_adventures_tileset_16x16.png')
-bush = pygame.Surface.subsurface(tileset, (112, 64, 16, 16))
-ground_island = pygame.Surface.subsurface(tileset, (50, 48, 12, 16))
-ground_row = pygame.Surface.subsurface(tileset, (0, 48, 48, 16))
+STEP = 5
+
+tileset_1 = load_image('morning_adventures_tileset_16x16.png')
+bush = pygame.Surface.subsurface(tileset_1, (112, 64, 16, 16))
+ground_island = pygame.Surface.subsurface(tileset_1, (50, 48, 12, 16))
+ground_row = pygame.Surface.subsurface(tileset_1, (0, 48, 48, 16))
+spikes = pygame.Surface.subsurface(tileset_1, (80, 80, 16, 16))
+
 tile_images = {
     'bush': pygame.transform.scale(bush, (50, 50)),
     'ground_island': pygame.transform.scale(ground_island, (50, 50)),
-    'ground_block': pygame.transform.scale(ground_island, (150, 50))
+    'ground_block': pygame.transform.scale(ground_row, (150, 50)),
+    'spikes': pygame.transform.scale(spikes, (50, 50))
 }
-player_image = load_image('mar.png')
+player_image = pygame.transform.scale(load_image('adventurer-idle-00.png'), (70, 45))
 
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
+background_group = pygame.sprite.Group()
 
 
 def start_screen():
@@ -75,6 +80,14 @@ class Player(pygame.sprite.Sprite):
             tile_width * pos_x + 15, tile_height * pos_y + 5)
 
 
+class BackGround(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__(background_group)
+        self.image = pygame.transform.scale(load_image('sky_background.png'), (2500, 550))
+        self.rect = self.image.get_rect().move(0, 0)
+        print('fogihb')
+
+
 '''def strip_from_sheet(sheet, start, size, columns, rows):
     frames = []
     for j in range(rows):
@@ -94,18 +107,40 @@ def load_level(filename):
 
 def generate_level(level):
     new_player, x, y = None, None, None
+    BackGround()
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
                 continue
             elif level[y][x] == '#':
-                Tile('bush', x, y)
+                Tile('spikes', x, y)
             elif level[y][x] == '@':
                 new_player = Player(x, y)
             elif level[y][x] == '_':
                 Tile('ground_island', x, y)
     # вернем игрока, а также размер поля в клетках
     return new_player, x, y
+
+
+class Camera:
+    # зададим начальный сдвиг камеры
+    def __init__(self, field_size):
+        self.dx = 0
+        self.dy = 0
+        self.field_size = field_size
+
+    # сдвинуть объект obj на смещение камеры
+    def apply(self, obj):
+        obj.rect.x += self.dx
+        if obj.rect.x < -obj.rect.width:
+            obj.rect.x += (self.field_size[0] + 1) * obj.rect.width
+        if obj.rect.x >= (self.field_size[0]) * obj.rect.width:
+            obj.rect.x += (self.field_size[0] + 1) * -obj.rect.width
+        obj.rect.x -= 100
+
+    # позиционировать камеру на объекте target
+    def update(self, target):
+        self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
 
 
 screen = pygame.display.set_mode(size)
@@ -118,8 +153,10 @@ def terminate():
     sys.exit()
 
 
+camera = Camera((level_x, level_y))
 running = True
 while running:
+    player.rect.x += STEP
     for event in pygame.event.get():
         all_sprites.update()
         if event.type == pygame.QUIT:
@@ -130,15 +167,18 @@ while running:
             if event.key == pygame.K_DOWN:
                 player.rect.y += STEP
 
-    '''camera.update(player)
+    camera.update(player)
 
     for sprite in all_sprites:
-        camera.apply(sprite)'''
+        camera.apply(sprite)
 
     clock.tick(FPS)
     pygame.display.flip()
     screen.fill((0, 0, 0))
+    background_group.draw(screen)
     tiles_group.draw(screen)
     player_group.draw(screen)
 
 terminate()
+'''fon = pygame.transform.scale(load_image('sky_background.png'), (WIDTH, HEIGHT))
+    screen.blit(fon, (0, 0))'''
