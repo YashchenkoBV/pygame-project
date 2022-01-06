@@ -5,10 +5,6 @@ import os
 
 def load_image(name):
     fullname = os.path.join('data', name)
-    # если файл не существует, то выходим
-    if not os.path.isfile(fullname):
-        print(f"Файл с изображением '{fullname}' не найден")
-        sys.exit()
     image = pygame.image.load(fullname)
     return image
 
@@ -27,12 +23,11 @@ ground_row = pygame.Surface.subsurface(tileset_1, (0, 48, 48, 16))
 spikes = pygame.Surface.subsurface(tileset_1, (80, 80, 16, 16))
 
 tile_images = {
-    'bush': pygame.transform.scale(bush, (50, 50)),
+    'bush': pygame.transform.scale(bush, (40, 40)),
     'ground_island': pygame.transform.scale(ground_island, (50, 50)),
     'ground_block': pygame.transform.scale(ground_row, (150, 50)),
     'spikes': pygame.transform.scale(spikes, (50, 50))
 }
-player_image = pygame.transform.scale(load_image('adventurer-idle-00.png'), (70, 45))
 
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
@@ -72,12 +67,27 @@ class Tile(pygame.sprite.Sprite):
             tile_width * pos_x, tile_height * pos_y)
 
 
-class Player(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(player_group, all_sprites)
-        self.image = player_image
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x + 15, tile_height * pos_y + 5)
+class AnimatedPlayer(pygame.sprite.Sprite):
+    def __init__(self, sheet, columns, rows, x, y):
+        super().__init__(all_sprites)
+        self.frames = []
+        self.cut_sheet(sheet, columns, rows)
+        self.cur_frame = 0
+        self.image = self.frames[self.cur_frame]
+        self.rect = self.rect.move(tile_width * x + 15, tile_height * y + 5)
+
+    def cut_sheet(self, sheet, columns, rows):
+        self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
+                                sheet.get_height() // rows)
+        for j in range(rows):
+            for i in range(columns):
+                frame_location = (self.rect.w * i, self.rect.h * j)
+                self.frames.append(sheet.subsurface(pygame.Rect(
+                    frame_location, self.rect.size)))
+
+    def update(self):
+        self.cur_frame = (self.cur_frame + 1) % len(self.frames)
+        self.image = self.frames[self.cur_frame]
 
 
 class BackGround(pygame.sprite.Sprite):
@@ -86,15 +96,6 @@ class BackGround(pygame.sprite.Sprite):
         self.image = pygame.transform.scale(load_image('sky_background.png'), (2500, 550))
         self.rect = self.image.get_rect().move(0, 0)
         print('fogihb')
-
-
-'''def strip_from_sheet(sheet, start, size, columns, rows):
-    frames = []
-    for j in range(rows):
-        for i in range(columns):
-            location = (start[0]+size[0]*i, start[1]+size[1]*j)
-            frames.append(sheet.sur)
-    return frames'''
 
 
 def load_level(filename):
@@ -115,7 +116,8 @@ def generate_level(level):
             elif level[y][x] == '#':
                 Tile('spikes', x, y)
             elif level[y][x] == '@':
-                new_player = Player(x, y)
+                new_player = AnimatedPlayer(load_image('run.png'), 10, 1, x, y)
+                print(x, y)
             elif level[y][x] == '_':
                 Tile('ground_island', x, y)
     # вернем игрока, а также размер поля в клетках
@@ -154,16 +156,15 @@ def terminate():
 
 
 def jump():
-    v = 210
     x_pos = player.rect.y
     global down_f
     if x_pos > ground - 65 and not down_f:
-        x_pos -= v * clock.tick() // 1000  # v * t в секундах
+        x_pos -= 2  # v * t в секундах
     if x_pos <= ground - 65:
         down_f = True
-        x_pos += v * clock.tick() // 1000  # v * t в секундах
+        x_pos += 2  # v * t в секундах
     if down_f:
-        x_pos += v * clock.tick() // 1000  # v * t в секундах
+        x_pos += 2  # v * t в секундах
     if x_pos >= ground:
         global jump_f
         jump_f = False
@@ -171,10 +172,16 @@ def jump():
 
 
 camera = Camera((level_x, level_y))
+count = 0
+player.cut_sheet(load_image('run.png'), 10, 1)
 running = True
 jump_f = False
 while running:
     player.rect.x += STEP
+    screen.blit(player.image, (player.rect.x, player.rect.y))
+    if count == 6:
+        player.update()
+        count = 0
     for event in pygame.event.get():
         all_sprites.update()
         if event.type == pygame.QUIT:
@@ -184,7 +191,7 @@ while running:
                 player.rect.y -= 150
             if event.key == pygame.K_DOWN and player.rect.y <= 400:
                 player.rect.y += 150
-            if event.key == pygame.K_SPACE:
+            if event.key == pygame.K_SPACE and (player.rect.y == 105 or player.rect.y == 255 or player.rect.y == 405):
                 ground = player.rect.y
                 down_f = False
                 jump_f = True
@@ -194,7 +201,7 @@ while running:
 
     for sprite in all_sprites:
         camera.apply(sprite)
-
+    count += 1
     clock.tick(FPS)
     pygame.display.flip()
     screen.fill((0, 0, 0))
@@ -203,5 +210,3 @@ while running:
     player_group.draw(screen)
 
 terminate()
-'''fon = pygame.transform.scale(load_image('sky_background.png'), (WIDTH, HEIGHT))
-    screen.blit(fon, (0, 0))'''
