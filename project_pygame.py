@@ -147,9 +147,6 @@ def generate_level(level):
                 new_player = Player(x, y)
             elif level[y][x] == '_':
                 Tile('ground_island', x, y)
-    # вернем игрока, а также размер поля в клетках
-    print(x)
-    print(y)
     return new_player, x, y, spikes_lst, finish
 
 
@@ -275,7 +272,7 @@ def main_menu():
                 for elem in levels_lst:
                     c += 1
                     if elem.collidepoint(mouse_pos) and cur_state == 'menu':
-                        player, level_x, level_y, sp_lst, finish = generate_level(load_level(f'lvl{1}.txt'))
+                        player, level_x, level_y, sp_lst, finish = generate_level(load_level(f'lvl{c}.txt'))
                         return player, level_x, level_y, sp_lst, finish
 
         pygame.display.flip()
@@ -284,8 +281,7 @@ def main_menu():
 
 screen = pygame.display.set_mode(size)
 start_screen()
-main_menu()
-player, level_x, level_y, sp_lst, finish = generate_level(load_level('lvl1.txt'))
+player, level_x, level_y, sp_lst, finish = main_menu()
 camera = Camera((49, 13))
 running = True
 jump_f = False
@@ -311,15 +307,15 @@ while running:
             mouse_pos = event.pos
             if button_message_window_win.collidepoint(mouse_pos) and cur_state == 'win':
                 cur_state = 'menu'
-                main_menu()
-
+                player, level_x, level_y, sp_lst, finish = main_menu()
+                ALIVE = True
+                WIN = False
+                STEP = 5
         elif event.type == pygame.KEYDOWN and ALIVE:
             if event.key == pygame.K_UP and player.rect.y >= 170:
                 player.rect.y -= 200
-                print(player.rect.y)
             if event.key == pygame.K_DOWN and player.rect.y <= 400:
                 player.rect.y += 200
-                print(player.rect.y)
             if event.key == pygame.K_SPACE:
                 if player.rect.y in y_lst:
                     ground = player.rect.y
