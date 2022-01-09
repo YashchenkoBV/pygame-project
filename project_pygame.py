@@ -21,6 +21,7 @@ tile_width = tile_height = 50
 STEP = 5
 ALIVE = True
 WIN = False
+after_menu = False
 
 tileset_1 = load_image('morning_adventures_tileset_16x16.png')
 bush = pygame.Surface.subsurface(tileset_1, (112, 64, 16, 16))
@@ -37,17 +38,20 @@ tile_images = {
 player_image = pygame.transform.scale(load_image('adventurer-idle-00.png'), (70, 45))
 spike_image = pygame.transform.scale(spikes, (50, 50))
 
+cur_state = 'menu'
+levels_lst = []
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 background_group = pygame.sprite.Group()
 spikes_group = pygame.sprite.Group()
 finish_group = pygame.sprite.Group()
+button_message_window_win = pygame.Rect(160, 390, 380, 100)
 
 
 def start_screen():
     intro_text = ["Это временно"]
-
+    pygame.display.set_caption('ЗАСТВАВКА')
     fon = pygame.transform.scale(load_image('test_fon.png'), (WIDTH, HEIGHT))
     screen.blit(fon, (0, 0))
     font = pygame.font.Font(None, 30)
@@ -144,6 +148,8 @@ def generate_level(level):
             elif level[y][x] == '_':
                 Tile('ground_island', x, y)
     # вернем игрока, а также размер поля в клетках
+    print(x)
+    print(y)
     return new_player, x, y, spikes_lst, finish
 
 
@@ -166,11 +172,6 @@ class Camera:
     # позиционировать камеру на объекте target
     def update(self, target):
         self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
-
-
-screen = pygame.display.set_mode(size)
-start_screen()
-player, level_x, level_y, sp_lst, finish = generate_level(load_level('lvl1.txt'))
 
 
 def terminate():
@@ -202,34 +203,118 @@ def jump():
     player.rect.x += 8
 
 
-def message_window(WIN):
+def message_window_win():
     col = pygame.Color('#640933')
     pygame.draw.rect(screen, col, (150, 250, 400, 250), 0)
+    text = ['Поздравляем!', 'Вы прошли уровень!']
+    text_coord = 250
+    font = pygame.font.Font(None, 30)
+    for line in text:
+        string_rendered = font.render(line, True, pygame.Color('yellow'))
+        intro_rect = string_rendered.get_rect()
+        text_coord += 10
+        intro_rect.top = text_coord
+        intro_rect.x = 155
+        text_coord += intro_rect.height
+        screen.blit(string_rendered, intro_rect)
+    global button_message_window_win
+    pygame.draw.rect(screen, pygame.Color('#ff7029'), button_message_window_win, 0)
+    button_text = 'Вернуться в меню'
+    font_button = pygame.font.Font(None, 60)
+    string_rendered = font_button.render(button_text, True, pygame.Color('yellow'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.top = 415
+    intro_rect.x = 160
+    screen.blit(string_rendered, intro_rect)
 
 
-camera = Camera((level_x, level_y))
+def main_menu():
+    global WIDTH
+    global HEIGHT
+    pygame.display.set_caption('МЕНЮ')
+    col1 = pygame.Color('#640933')
+    pygame.draw.rect(screen, col1, (0, 0, WIDTH, HEIGHT), 0)
+
+    main_font = pygame.font.Font(None, 120)
+    title = main_font.render('Gold Run', True, pygame.Color('yellow'))
+    title_rect = title.get_rect()
+    title_rect.top = 20
+    title_rect.x = 155
+    screen.blit(title, title_rect)
+
+    coins_font = pygame.font.Font(None, 30)
+    coins = coins_font.render('Монеты:', True, pygame.Color('yellow'))
+    coins_rect = coins.get_rect()
+    coins_rect.top = 110
+    coins_rect.x = 10
+    screen.blit(coins, coins_rect)
+
+    global levels_lst
+    cyb = 155
+    cyt = 185
+    for i in range(5):
+        button = pygame.Rect(10, cyb, 680, 100)
+        pygame.draw.rect(screen, pygame.Color('#ff7029'), button, 0)
+        levels_lst.append(button)
+        button_font = pygame.font.Font(None, 60)
+        button_text = button_font.render(f'{i + 1} уровень', True, pygame.Color('yellow'))
+        button_rect = button_text.get_rect()
+        button_rect.top = cyt
+        button_rect.x = 230
+        screen.blit(button_text, button_rect)
+        cyb += 130
+        cyt += 130
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                c = 0
+                for elem in levels_lst:
+                    c += 1
+                    if elem.collidepoint(mouse_pos) and cur_state == 'menu':
+                        player, level_x, level_y, sp_lst, finish = generate_level(load_level(f'lvl{1}.txt'))
+                        return player, level_x, level_y, sp_lst, finish
+
+        pygame.display.flip()
+        clock.tick(FPS)
+
+
+screen = pygame.display.set_mode(size)
+start_screen()
+main_menu()
+player, level_x, level_y, sp_lst, finish = generate_level(load_level('lvl1.txt'))
+camera = Camera((49, 13))
 running = True
 jump_f = False
 y_lst = (156, 356, 556)
 while running:
     if not jump_f:
         player.rect.x += STEP
-    for elem in sp_lst:
+    '''for elem in sp_lst:
         if pygame.sprite.collide_mask(player, elem):
             STEP = 0
-            ALIVE = False
-            '''message_window(WIN)'''
+            ALIVE = False'''
     if pygame.sprite.collide_mask(player, finish):
         STEP = 0
         ALIVE = False
         WIN = True
-        '''message_window(WIN)'''
+        cur_state = 'win'
+        message_window_win()
     for event in pygame.event.get():
         all_sprites.update()
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = event.pos
+            if button_message_window_win.collidepoint(mouse_pos) and cur_state == 'win':
+                cur_state = 'menu'
+                main_menu()
+
         elif event.type == pygame.KEYDOWN and ALIVE:
-            if event.key == pygame.K_UP and player.rect.y >= 150:
+            if event.key == pygame.K_UP and player.rect.y >= 170:
                 player.rect.y -= 200
                 print(player.rect.y)
             if event.key == pygame.K_DOWN and player.rect.y <= 400:
