@@ -19,7 +19,7 @@ FPS = 30
 size = WIDTH, HEIGHT = 700, 800
 clock = pygame.time.Clock()
 tile_width = tile_height = 50
-STEP = 3
+STEP = 4
 ALIVE = True
 WIN = False
 ground_y = set()
@@ -40,6 +40,9 @@ player_width, player_height = Image.open('data/run2.png').size
 print(player_height)
 spike_image = pygame.transform.scale(spikes, (50, 50))
 
+cur_state = 'menu'
+levels_lst = []
+button_message_window_win = pygame.Rect(160, 390, 380, 100)
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
@@ -201,17 +204,17 @@ def terminate():
 
 
 def jump():
-    v = 500
+    v = 300
     y_pos = player.rect.y
-    jump_h = ground - 80
+    jump_h = ground - 90
     global down_f
     if y_pos > jump_h and not down_f:
-        y_pos -= v * clock.tick() // 1000  # v * t в секундах
+        y_pos -= 4  # v * t в секундах
     if y_pos <= jump_h:
         down_f = True
-        y_pos += v * clock.tick() // 1000  # v * t в секундах
+        y_pos += 4  # v * t в секундах
     if down_f:
-        y_pos += v * clock.tick() // 1000  # v * t в секундах
+        y_pos += 4  # v * t в секундах
     if y_pos >= ground:
         global jump_f
         jump_f = False
@@ -234,12 +237,73 @@ def message_window_win():
         intro_rect.x = 155
         text_coord += intro_rect.height
         screen.blit(string_rendered, intro_rect)
-    button = pygame.Rect(160, 390, 380, 100)
-    pygame.draw.rect(screen, pygame.Color('#ff7029'), button, 0)
+    global button_message_window_win
+    pygame.draw.rect(screen, pygame.Color('#ff7029'), button_message_window_win, 0)
     button_text = 'Вернуться в меню'
+    font_button = pygame.font.Font(None, 60)
+    string_rendered = font_button.render(button_text, True, pygame.Color('yellow'))
+    intro_rect = string_rendered.get_rect()
+    intro_rect.top = 415
+    intro_rect.x = 160
+    screen.blit(string_rendered, intro_rect)
+
+
+def main_menu():
+    global WIDTH
+    global HEIGHT
+    pygame.display.set_caption('МЕНЮ')
+    col1 = pygame.Color('#640933')
+    pygame.draw.rect(screen, col1, (0, 0, WIDTH, HEIGHT), 0)
+
+    main_font = pygame.font.Font(None, 120)
+    title = main_font.render('Gold Run', True, pygame.Color('yellow'))
+    title_rect = title.get_rect()
+    title_rect.top = 20
+    title_rect.x = 155
+    screen.blit(title, title_rect)
+
+    coins_font = pygame.font.Font(None, 30)
+    coins = coins_font.render('Монеты:', True, pygame.Color('yellow'))
+    coins_rect = coins.get_rect()
+    coins_rect.top = 110
+    coins_rect.x = 10
+    screen.blit(coins, coins_rect)
+
+    global levels_lst
+    cyb = 155
+    cyt = 185
+    for i in range(5):
+        button = pygame.Rect(10, cyb, 680, 100)
+        pygame.draw.rect(screen, pygame.Color('#ff7029'), button, 0)
+        levels_lst.append(button)
+        button_font = pygame.font.Font(None, 60)
+        button_text = button_font.render(f'{i + 1} уровень', True, pygame.Color('yellow'))
+        button_rect = button_text.get_rect()
+        button_rect.top = cyt
+        button_rect.x = 230
+        screen.blit(button_text, button_rect)
+        cyb += 130
+        cyt += 130
+
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                terminate()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+                c = 0
+                for elem in levels_lst:
+                    c += 1
+                    if elem.collidepoint(mouse_pos) and cur_state == 'menu':
+                        player, level_x, level_y, sp_lst, finish = generate_level(load_level(f'lvl{c}.txt'))
+                        return player, level_x, level_y, sp_lst, finish
+
+        pygame.display.flip()
+        clock.tick(FPS)
 
 
 camera = Camera((level_x, level_y))
+player, level_x, level_y, sp_lst, finish = main_menu()
 running = True
 jump_f = False
 count = 0
@@ -256,12 +320,19 @@ while running:
         STEP = 0
         ALIVE = False
         WIN = True
+        cur_state = 'win'
         message_window_win()
     for event in pygame.event.get():
         if ALIVE:
             all_sprites.update()
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            mouse_pos = event.pos
+            if button_message_window_win.collidepoint(mouse_pos) and cur_state == 'win':
+                cur_state = 'menu'
+                player, level_x, level_y, sp_lst, finish = main_menu()
+
         elif event.type == pygame.KEYDOWN and ALIVE:
             if event.key == pygame.K_UP and player.rect.y > sorted(list(ground_y))[0] and not jump_f:
                 player.rect.y -= sorted(list(ground_y))[1] - sorted(list(ground_y))[0]
