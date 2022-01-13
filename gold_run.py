@@ -25,31 +25,24 @@ WIN = False
 ground_y = set()
 
 tileset_1 = load_image('morning_adventures_tileset_16x16.png')
-bush = pygame.Surface.subsurface(tileset_1, (112, 64, 16, 16))
 ground_island = pygame.Surface.subsurface(tileset_1, (50, 48, 12, 16))
-ground_row = pygame.Surface.subsurface(tileset_1, (0, 48, 48, 16))
 spikes = pygame.Surface.subsurface(tileset_1, (80, 80, 16, 16))
+ground_island = pygame.transform.scale(ground_island, (50, 50))
+spikes = pygame.transform.scale(spikes, (50, 40))
 
-tile_images = {
-    'bush': pygame.transform.scale(bush, (50, 50)),
-    'ground_island': pygame.transform.scale(ground_island, (50, 50)),
-    'ground_block': pygame.transform.scale(ground_row, (150, 50)),
-    'spikes': pygame.transform.scale(spikes, (50, 50))
-}
 player_width, player_height = Image.open('data/run2.png').size
-print(player_height)
-spike_image = pygame.transform.scale(spikes, (50, 50))
 
 cur_state = 'menu'
 levels_lst = []
 button_message_window_win = pygame.Rect(160, 390, 380, 100)
+
 all_sprites = pygame.sprite.Group()
 tiles_group = pygame.sprite.Group()
 player_group = pygame.sprite.Group()
 background_group = pygame.sprite.Group()
 spikes_group = pygame.sprite.Group()
-finish_group = pygame.sprite.Group()
 chests_group = pygame.sprite.Group()
+coins_group = pygame.sprite.Group()
 
 
 def start_screen():
@@ -76,31 +69,22 @@ def start_screen():
         clock.tick(FPS)
 
 
-class Tile(pygame.sprite.Sprite):
-    def __init__(self, tile_type, pos_x, pos_y):
-        super().__init__(tiles_group, all_sprites)
-        self.image = tile_images[tile_type]
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x, tile_height * pos_y)
-
-
-class Spike(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(spikes_group, all_sprites)
-        self.image = spike_image
-        self.rect = self.image.get_rect().move(
-            tile_width * pos_x, tile_height * pos_y)
+class Sprites(pygame.sprite.Sprite):
+    def __init__(self, image, group, pos_x, pos_y, x_move=0, y_move=0):
+        super().__init__(group, all_sprites)
+        self.image = image
+        self.rect = self.image.get_rect().move(tile_width * pos_x + x_move, tile_height * pos_y + y_move)
         self.mask = pygame.mask.from_surface(self.image)
 
 
 class AnimatedSprite(pygame.sprite.Sprite):
-    def __init__(self, sheet, columns, rows, x, y, y_add=0):
+    def __init__(self, sheet, columns, rows, x, y, x_move=0, y_move=0):
         super().__init__(all_sprites)
         self.frames = []
         self.cut_sheet(sheet, columns, rows)
         self.cur_frame = 0
         self.image = self.frames[self.cur_frame]
-        self.rect = self.rect.move(tile_width * x, tile_height * y - y_add)
+        self.rect = self.rect.move(tile_width * x + x_move, tile_height * y - y_move)
 
     def cut_sheet(self, sheet, columns, rows):
         self.rect = pygame.Rect(0, 0, sheet.get_width() // columns,
@@ -123,22 +107,6 @@ class BackGround(pygame.sprite.Sprite):
         self.rect = self.image.get_rect().move(0, 0)
 
 
-class Finish(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(finish_group, all_sprites)
-        self.image = pygame.transform.scale(load_image('finish.png'), (130, 130))
-        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
-
-
-class Chest(pygame.sprite.Sprite):
-    def __init__(self, pos_x, pos_y):
-        super().__init__(chests_group, all_sprites)
-        self.image = pygame.transform.scale(load_image('chest.png'), (60, 50))
-        self.rect = self.image.get_rect().move(tile_width * pos_x, tile_height * pos_y)
-        self.mask = pygame.mask.from_surface(self.image)
-
-
 def load_level(filename):
     filename = "data/" + filename
     with open(filename, 'r') as mapFile:
@@ -151,25 +119,29 @@ def generate_level(level):
     new_player, chest, x, y = None, None, None, None
     BackGround()
     spikes_lst = []
+    chests_lst = []
+    coins_lst = []
     for y in range(len(level)):
         for x in range(len(level[y])):
             if level[y][x] == '.':
                 continue
             elif level[y][x] == '#':
-                Spike(x, y)
-                spikes_lst.append(Spike(x, y))
+                spike = Sprites(pygame.transform.scale(spikes, (50, 50)), spikes_group, x, y, y_move=1)
+                spikes_lst.append(spike)
             elif level[y][x] == 'C':
-                chest = Chest(x, y)
-            elif level[y][x] == 'F':
-                Finish(x, y)
+                chest = Sprites(pygame.transform.scale(load_image('chest.png'), (60, 50)), chests_group, x, y)
+                chests_lst.append(chest)
             elif level[y][x] == '@':
-                new_player = AnimatedSprite(load_image('run1.png'), 32, 1, x, y, 9)
+                new_player = AnimatedSprite(load_image('run1.png'), 32, 1, x, y, y_move=9)
             elif level[y][x] == '_':
-                a = Tile('ground_island', x, y)
+                tile = Sprites(pygame.transform.scale(ground_island, (50, 50)), tiles_group, x, y)
                 global ground_y
-                ground_y.add(a.rect.y - player_height)
+                ground_y.add(tile.rect.y - player_height)
+            elif level[y][x] == '!':
+                coin = AnimatedSprite(pygame.transform.scale(load_image('coin.png'), (560, 20)), 14, 1, x, y, 8, -20)
+                coins_lst.append(coin)
     # вернем игрока, а также размер поля в клетках
-    return new_player, x, y, spikes_lst, chest
+    return new_player, x, y, spikes_lst, chests_lst, coins_lst
 
 
 class Camera:
@@ -193,18 +165,12 @@ class Camera:
         self.dx = -(target.rect.x + target.rect.w // 2 - WIDTH // 2)
 
 
-screen = pygame.display.set_mode(size)
-start_screen()
-player, level_x, level_y, sp_lst, chest = generate_level(load_level('lvl1.txt'))
-
-
 def terminate():
     pygame.quit()
     sys.exit()
 
 
 def jump():
-    v = 300
     y_pos = player.rect.y
     jump_h = ground - 90
     global down_f
@@ -295,33 +261,21 @@ def main_menu():
                 for elem in levels_lst:
                     c += 1
                     if elem.collidepoint(mouse_pos) and cur_state == 'menu':
-                        player, level_x, level_y, sp_lst, finish = generate_level(load_level(f'lvl{c}.txt'))
-                        return player, level_x, level_y, sp_lst, finish
+                        player, level_x, level_y, spikes_lst, chests_lst, coins_lst = generate_level(
+                            load_level(f'lvl{c}.txt'))
+                        return player, level_x, level_y, spikes_lst, chests_lst, coins_lst
 
         pygame.display.flip()
         clock.tick(FPS)
 
 
+screen = pygame.display.set_mode(size)
+start_screen()
+player, level_x, level_y, spikes_lst, chests_lst, coins_lst = main_menu()
 camera = Camera((level_x, level_y))
-player, level_x, level_y, sp_lst, finish = main_menu()
 running = True
 jump_f = False
-count = 0
 while running:
-    count += 1
-    if not jump_f:
-        player.rect.x += STEP
-    if ALIVE:
-        player.update()
-        screen.blit(player.image, (player.rect.x, player.rect.y))
-        player_group.draw(screen)
-        camera.update(player)
-    if pygame.sprite.spritecollide(player, chests_group, False):
-        STEP = 0
-        ALIVE = False
-        WIN = True
-        cur_state = 'win'
-        message_window_win()
     for event in pygame.event.get():
         if ALIVE:
             all_sprites.update()
@@ -331,7 +285,7 @@ while running:
             mouse_pos = event.pos
             if button_message_window_win.collidepoint(mouse_pos) and cur_state == 'win':
                 cur_state = 'menu'
-                player, level_x, level_y, sp_lst, finish = main_menu()
+                player, level_x, level_y, spikes_lst, chests_lst, coins_lst = main_menu()
 
         elif event.type == pygame.KEYDOWN and ALIVE:
             if event.key == pygame.K_UP and player.rect.y > sorted(list(ground_y))[0] and not jump_f:
@@ -345,20 +299,42 @@ while running:
                     ground = player.rect.y
                     down_f = False
                     jump_f = True
-    if jump_f and ALIVE:
-        jump()
+
+    for spike in spikes_lst:
+        if pygame.sprite.collide_mask(player, spike):
+            STEP = 0
+            ALIVE = False
+    for chest in chests_lst:
+        if pygame.sprite.collide_mask(player, chest):
+            STEP = 0
+            ALIVE = False
+            WIN = True
+            cur_state = 'win'
+            message_window_win()
+    for coin in coins_lst:
+        if not pygame.sprite.collide_mask(player, coin):
+            screen.blit(coin.image, (coin.rect.x, coin.rect.y))
+            coin.update()
+        else:
+            del coins_lst[coins_lst.index(coin)]
 
     if ALIVE:
+        player.update()
+        camera.update(player)
         for sprite in all_sprites:
             camera.apply(sprite)
+        if jump_f:
+            jump()
+        else:
+            player.rect.x += STEP
 
+    screen.blit(player.image, (player.rect.x, player.rect.y))
     clock.tick(FPS)
     pygame.display.flip()
     screen.fill((0, 0, 0))
     background_group.draw(screen)
     tiles_group.draw(screen)
     spikes_group.draw(screen)
-    player_group.draw(screen)
     chests_group.draw(screen)
-    finish_group.draw(screen)
+    coins_group.draw(screen)
 terminate()
