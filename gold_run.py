@@ -129,7 +129,8 @@ def generate_level(level):
                 spike = Sprites(pygame.transform.scale(spikes, (50, 50)), spikes_group, x, y, y_move=1)
                 spikes_lst.append(spike)
             elif level[y][x] == 'C':
-                chest = Sprites(pygame.transform.scale(load_image('chest.png'), (60, 50)), chests_group, x, y)
+                chest = Sprites(pygame.transform.scale(load_image('chest.png'), (70, 60)), chests_group, x, y,
+                                y_move=-10)
                 chests_lst.append(chest)
             elif level[y][x] == '@':
                 new_player = AnimatedSprite(load_image('run1.png'), 32, 1, x, y, y_move=9)
@@ -290,10 +291,8 @@ while running:
         elif event.type == pygame.KEYDOWN and ALIVE:
             if event.key == pygame.K_UP and player.rect.y > sorted(list(ground_y))[0] and not jump_f:
                 player.rect.y -= sorted(list(ground_y))[1] - sorted(list(ground_y))[0]
-                print(player.rect.y)
             if event.key == pygame.K_DOWN and player.rect.y < sorted(list(ground_y))[2] and not jump_f:
                 player.rect.y += sorted(list(ground_y))[1] - sorted(list(ground_y))[0]
-                print(player.rect.y)
             if event.key == pygame.K_SPACE:
                 if player.rect.y in ground_y:
                     ground = player.rect.y
